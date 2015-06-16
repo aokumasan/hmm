@@ -19,7 +19,6 @@ obs = np.array([0, 1, 0])
 n = len(obs)
 
 # 変数の初期化
-c = np.zeros(n)
 alpha = np.zeros((n, state_num))
 
 # 初期化
