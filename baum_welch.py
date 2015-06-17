@@ -17,9 +17,9 @@ pi = np.array([1/2, 1/2])
 
 # これはパラメータ学習の初期値
 # 遷移確率行列
-eA = np.array([[0.85, 0.15], [0.12, 0.88]])
+eA = np.array([[0.7, 0.3], [0.4, 0.6]])
 # 出力確率行列
-eB = np.array([[0.8, 0.2], [0.4, 0.6]])
+eB = np.array([[0.6, 0.4], [0.5, 0.5]])
 # 初期確率
 epi = np.array([1/2, 1/2])
 
@@ -40,7 +40,7 @@ def simulate(nSteps):
         observations[t] = drawFrom(B[states[t],:])
     return observations,states
 
-def baum_welch(obs, A, B, pi, eps = 1e-4, max_iter = 400):
+def baum_welch(obs, A, B, pi, eps = 1e-9, max_iter = 500):
 
     # 対数尤度保持用
     old_loglikelihood = 0.0
@@ -82,6 +82,7 @@ def baum_welch(obs, A, B, pi, eps = 1e-4, max_iter = 400):
 
         # M-Step
         # update A
+        # ちょっとダサい。
         newA = numer = denom = np.zeros((state_num, state_num))
         for t in range(0, n-1):
             numer = numer + alpha[t, :][:, np.newaxis] * A * B[:, obs[t+1]] * beta[t+1, :]
@@ -89,6 +90,7 @@ def baum_welch(obs, A, B, pi, eps = 1e-4, max_iter = 400):
         newA = numer / denom.T
 
         # update B
+        # ダサい。
         newB = np.zeros((state_num, symbol_num))
         for j in range(0, state_num):
             for k in range(0, symbol_num):
@@ -123,8 +125,7 @@ obs, state = simulate(1000)
 
 #obs = np.array([0, 1, 0])
 
-eA, eB, epi = baum_welch(obs, eA, eB, epi, 1e-9, 200)
-
+eA, eB, epi = baum_welch(obs, eA, eB, epi)
 
 print("Actual parameters")
 print(A)
