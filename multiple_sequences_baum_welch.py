@@ -1,5 +1,4 @@
 import numpy as np
-import sys
 
 # 状態数
 state_num = 2
@@ -27,29 +26,21 @@ epi = np.array([1/2, 1/2])
 
 np.random.seed(1234)
 
-class HMM:
+class BaumWelch:
     # constructor
     def __init__(self, A, B, pi):
         self.A = A     # transition matrix
         self.B = B     # emission matrix
         self.pi = pi   # start prob
 
-
-    # create HMM sample (obervations & states)
-    def sample(self, steps):
-
-        def drawFrom(probs):
-            return np.where(np.random.multinomial(1,probs) == 1)[0][0]
-
-        observations = np.zeros(steps)
-        states = np.zeros(steps)
-        states[0] = drawFrom(self.pi)
-        observations[0] = drawFrom(self.B[states[0],:])
-        for t in range(1,steps):
-            states[t] = drawFrom(self.A[states[t-1],:])
-            observations[t] = drawFrom(self.B[states[t],:])
-
-        return observations, states
+        
+    def init_variables(self):
+        # use in M-Step
+        self.A_num = np.zeros((state_num, state_num))
+        self.A_den = np.zeros((state_num, state_num))
+        self.B_num = np.zeros((state_num, symbol_num))
+        self.B_den = np.zeros((state_num, symbol_num))
+        self.mpi = np.zeros(state_num)
 
 
     # scaled forward algorithm
@@ -89,7 +80,6 @@ class HMM:
             beta[n-1, :] = self.c[n-1]
         except AttributeError:
             print("Error: scaling value is undefined. Please use this function after use forward().")
-            sys.exit()
 
         # induction
         for t in range((n-1), 0, -1):
@@ -100,67 +90,60 @@ class HMM:
 
 
     # M-Step
-    def __baum_welch_mstep(self, obs):
+    def maximization_step(self, obs):
         # length of observations
         n = len(obs)
 
-        # update A
-        newA = numer = denom = np.zeros((state_num, state_num))
+        # calc A
         for t in range(0, n-1):
-            numer = numer + self.alpha[t, :][:, np.newaxis] * self.A * self.B[:, obs[t+1]] * self.beta[t+1, :]
-            denom = denom + self.alpha[t, :] * self.beta[t, :] / self.c[t]
-        newA = numer / denom.T
+            self.A_num += self.alpha[t, :][:, np.newaxis] * self.A * self.B[:, obs[t+1]] * self.beta[t+1, :]
+            self.A_den += self.alpha[t, :] * self.beta[t, :] / self.c[t]
 
-        # update B
-        newB = np.zeros((state_num, symbol_num))
+        # calc B
         for j in range(0, state_num):
             for k in range(0, symbol_num):
-                numer2 = denom2 = 0
-                for t in range(0, n):
-                    if obs[t] == symbol[k]:
-                        numer2 = numer2 + self.alpha[t, j] * self.beta[t, j] / self.c[t]
-                    denom2 = denom2 + self.alpha[t, j].T * self.beta[t, j] / self.c[t]
-                newB[j, k] = numer2 / denom2
+                self.B_num[j, k] += np.sum((obs[:] == symbol[k]) * self.alpha[:, j] * self.beta[:, j] / self.c[:])
+                self.B_den[j, k] += np.sum(self.alpha[:, j].T * self.beta[:, j] / self.c[:])
 
         # update pi
-        newpi = self.alpha[0, :] * self.beta[0, :] / self.c[0]
-
-        self.A = newA
-        self.B = newB
-        self.pi = newpi
+        self.mpi += self.alpha[0, :] * self.beta[0, :] / self.c[0]
 
 
-    # Baum Welch algorithm
-    def baum_welch(self, obs, eps = 1e-9, max_iter = 400):
 
-        old_loglikelihood = 0.0
-        for i in range(0, max_iter):
-            # E-Step
-            self.forward(obs)
-            self.backward(obs)
-            # M-Step
-            self.__baum_welch_mstep(obs)
+    # Baum Welch algorithm with Multiple Sequences of observation symbols
+    def baum_welch_m(self, obs, delta = 1e-9, max_iter = 400):
 
-            loglikelihood = -np.sum(np.log(self.c[:]))
-            if np.abs(old_loglikelihood - loglikelihood) < eps:
+        seq_num = obs.shape[0]
+        loglik = np.zeros(seq_num)
+        p_loglik = np.zeros(seq_num)
+        
+        for count in range(0, max_iter):
+            self.init_variables()
+            
+            for s in range(0, seq_num):
+                s_obs = obs[s]
+                self.forward(s_obs)
+                self.backward(s_obs)
+                self.maximization_step(s_obs)
+                loglik[s] = -np.sum(np.log(self.c[:]))
+
+            self.A = self.A_num / self.A_den.T
+            self.B = self.B_num / self.B_den
+            self.pi = self.mpi / seq_num
+            
+            if all(np.abs(p_loglik - loglik) < np.array([delta]*seq_num)):
                 break
-            old_loglikelihood = loglikelihood
-            print(loglikelihood)
+
+            print("iter: [", count, "] , log-likelihood(min): [", np.min(loglik), "]")
+
+            p_loglik = loglik.copy()
 
 
-
-hmm1 = HMM(A, B, pi)
-obs, state = hmm1.sample(1000)
-
-hmm2 = HMM(eA, eB, epi)
-hmm2.baum_welch(obs)
-
-print("Actual parameters")
-print(hmm1.A)
-print(hmm1.B)
-print(hmm1.pi)
+hmm = BaumWelch(eA, eB, epi)
+obs = np.array([[0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0], [0, 0, 0, 1,0,1,1,1]])
+hmm.baum_welch_m(obs, 1e-9, 200)
 
 print("Estimated parameters")
-print(hmm2.A)
-print(hmm2.B)
-print(hmm2.pi)
+print(hmm.A)
+print(hmm.B)
+print(hmm.pi)
