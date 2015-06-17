@@ -7,6 +7,7 @@ symbol = np.array([0, 1])
 # 出力シンボルの数
 symbol_num = len(symbol)
 
+
 # これが本当の値
 # 遷移確率行列
 A = np.array([[0.85, 0.15], [0.12, 0.88]])
@@ -76,10 +77,7 @@ class BaumWelch:
         beta = np.zeros((n, state_num))
 
         # initialization
-        try:
-            beta[n-1, :] = self.c[n-1]
-        except AttributeError:
-            print("Error: scaling value is undefined. Please use this function after use forward().")
+        beta[n-1, :] = self.c[n-1]
 
         # induction
         for t in range((n-1), 0, -1):
@@ -138,10 +136,34 @@ class BaumWelch:
 
             p_loglik = loglik.copy()
 
+# create sample
+def simulate(nSteps):
+
+    def drawFrom(probs):
+        return np.where(np.random.multinomial(1,probs) == 1)[0][0]
+
+    observations = np.zeros(nSteps)
+    states = np.zeros(nSteps)
+    states[0] = drawFrom(pi)
+    observations[0] = drawFrom(B[states[0],:])
+    for t in range(1,nSteps):
+        states[t] = drawFrom(A[states[t-1],:])
+        observations[t] = drawFrom(B[states[t],:])
+    return observations,states
+
+o1, s = simulate(300)
+o2, s = simulate(50)
+o3, s = simulate(100)
 
 hmm = BaumWelch(eA, eB, epi)
-obs = np.array([[0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0], [0, 0, 0, 1,0,1,1,1]])
-hmm.baum_welch_m(obs, 1e-9, 200)
+obs = np.array([o1, o2, o3])
+print(obs)
+hmm.baum_welch_m(obs, 1e-9, 10000)
+
+print("Actual parameters")
+print(A)
+print(B)
+print(pi)
 
 print("Estimated parameters")
 print(hmm.A)
