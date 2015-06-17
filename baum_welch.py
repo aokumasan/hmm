@@ -94,12 +94,9 @@ def baum_welch(obs, A, B, pi, eps = 1e-9, max_iter = 500):
         newB = np.zeros((state_num, symbol_num))
         for j in range(0, state_num):
             for k in range(0, symbol_num):
-                numer2 = denom2 = 0
-                for t in range(0, n):
-                    if obs[t] == symbol[k]:
-                        numer2 = numer2 + alpha[t, j] * beta[t, j] / c[t]
-                    denom2 = denom2 + alpha[t, j].T * beta[t, j] / c[t]
-                newB[j, k] = numer2 / denom2
+                B_num = np.sum((obs[:] == symbol[k]) * alpha[:, j] * beta[:, j] / c[:])
+                B_den = np.sum(alpha[:, j].T * beta[:, j] / c[:])
+                newB[j, k] = B_num / B_den
 
         # update pi
         newpi = alpha[0, :] * beta[0, :] / c[0]
