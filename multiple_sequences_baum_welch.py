@@ -154,3 +154,13 @@ obs, state = hmm1.sample(1000)
 
 hmm2 = HMM(eA, eB, epi)
 hmm2.baum_welch(obs)
+
+print("Actual parameters")
+print(hmm1.A)
+print(hmm1.B)
+print(hmm1.pi)
+
+print("Estimated parameters")
+print(hmm2.A)
+print(hmm2.B)
+print(hmm2.pi)
