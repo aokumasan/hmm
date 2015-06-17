@@ -42,7 +42,10 @@ def simulate(nSteps):
 
 def baum_welch(obs, A, B, pi, eps = 1e-4, max_iter = 400):
 
-    old_loglikelihood = 0
+    # 対数尤度保持用
+    old_loglikelihood = 0.0
+    # 観測系列の長さ
+    n = len(obs)
 
     for count in range(0, max_iter):
         # E-Step
@@ -97,14 +100,14 @@ def baum_welch(obs, A, B, pi, eps = 1e-4, max_iter = 400):
                 newB[j, k] = numer2 / denom2
 
         # update pi
-        newpi = np.zeros(state_num)
-        for i in range(0, state_num):
-            newpi[i] = alpha[0, i] * beta[0, i] / c[0]
+        newpi = alpha[0, :] * beta[0, :] / c[0]
 
+        # update new parameters
         A = newA
         B = newB
         pi = newpi
 
+        # convergence check
         loglikelihood = - np.sum(np.log(c[:]))
         if np.abs(old_loglikelihood - loglikelihood) < eps:
             break
@@ -118,12 +121,9 @@ def baum_welch(obs, A, B, pi, eps = 1e-4, max_iter = 400):
 # 観測系列
 obs, state = simulate(1000)
 
-# 観測系列の長さ
-n = len(obs)
+#obs = np.array([0, 1, 0])
 
-print(obs)
-
-eA, eB, epi = baum_welch(obs, eA, eB, epi, 1e-9, 500)
+eA, eB, epi = baum_welch(obs, eA, eB, epi, 1e-9, 200)
 
 
 print("Actual parameters")
