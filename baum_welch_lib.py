@@ -1,47 +1,23 @@
 import numpy as np
 
-# 状態数
-state_num = 2
-# 出力シンボル(この場合は 0 と 1 )
-symbol = np.array([0, 1])
-# 出力シンボルの数
-symbol_num = len(symbol)
-
-
-# これが本当の値
-# 遷移確率行列
-A = np.array([[0.85, 0.15], [0.12, 0.88]])
-# 出力確率行列
-B = np.array([[0.8, 0.2], [0.4, 0.6]])
-# 初期確率
-pi = np.array([1/2, 1/2])
-
-# これはパラメータ学習の初期値
-# 遷移確率行列
-eA = np.array([[0.7, 0.3], [0.4, 0.6]])
-# 出力確率行列
-eB = np.array([[0.6, 0.4], [0.5, 0.5]])
-# 初期確率
-epi = np.array([1/2, 1/2])
-
-
-np.random.seed(1234)
-
 class BaumWelch:
     # constructor
     def __init__(self, A, B, pi):
         self.A = A     # transition matrix
         self.B = B     # emission matrix
         self.pi = pi   # start prob
+        self.state_num = A.shape[0]
+        self.symbol_num = B.shape[1]
+        self.symbol = np.arange(self.symbol_num)
 
         
+    # initialize variables (used in M-Step)
     def init_variables(self):
-        # use in M-Step
-        self.A_num = np.zeros((state_num, state_num))
-        self.A_den = np.zeros((state_num, state_num))
-        self.B_num = np.zeros((state_num, symbol_num))
-        self.B_den = np.zeros((state_num, symbol_num))
-        self.mpi = np.zeros(state_num)
+        self.A_num = np.zeros((self.state_num, self.state_num))
+        self.A_den = np.zeros((self.state_num, self.state_num))
+        self.B_num = np.zeros((self.state_num, self.symbol_num))
+        self.B_den = np.zeros((self.state_num, self.symbol_num))
+        self.npi = np.zeros(self.state_num)
 
 
     # scaled forward algorithm
@@ -50,7 +26,7 @@ class BaumWelch:
         n = len(obs)
 
         # init variables
-        alpha = np.zeros((n, state_num))
+        alpha = np.zeros((n, self.state_num))
         c = np.zeros(n)
 
         # initialization
@@ -74,7 +50,7 @@ class BaumWelch:
         n = len(obs)
 
         # init variables
-        beta = np.zeros((n, state_num))
+        beta = np.zeros((n, self.state_num))
 
         # initialization
         beta[n-1, :] = self.c[n-1]
@@ -98,74 +74,48 @@ class BaumWelch:
             self.A_den += self.alpha[t, :] * self.beta[t, :] / self.c[t]
 
         # calc B
-        for j in range(0, state_num):
-            for k in range(0, symbol_num):
-                self.B_num[j, k] += np.sum((obs[:] == symbol[k]) * self.alpha[:, j] * self.beta[:, j] / self.c[:])
+        for j in range(0, self.state_num):
+            for k in range(0, self.symbol_num):
+                self.B_num[j, k] += np.sum((obs[:] == self.symbol[k]) * self.alpha[:, j] * self.beta[:, j] / self.c[:])
                 self.B_den[j, k] += np.sum(self.alpha[:, j].T * self.beta[:, j] / self.c[:])
 
-        # update pi
-        self.mpi += self.alpha[0, :] * self.beta[0, :] / self.c[0]
+        # calc pi
+        self.npi += self.alpha[0, :] * self.beta[0, :] / self.c[0]
 
 
 
     # Baum Welch algorithm with Multiple Sequences of observation symbols
     def baum_welch_m(self, obs, delta = 1e-9, max_iter = 400):
 
+        # init
         seq_num = obs.shape[0]
         loglik = np.zeros(seq_num)
         p_loglik = np.zeros(seq_num)
-        
+
         for count in range(0, max_iter):
             self.init_variables()
-            
+
+            # calc alpha, beta, c each sequences
             for s in range(0, seq_num):
                 s_obs = obs[s]
+                # E-Step
                 self.forward(s_obs)
                 self.backward(s_obs)
+                # M-Step
                 self.maximization_step(s_obs)
+                # calc log-likelihood
                 loglik[s] = -np.sum(np.log(self.c[:]))
 
+            # update parameter
             self.A = self.A_num / self.A_den.T
             self.B = self.B_num / self.B_den
-            self.pi = self.mpi / seq_num
+            self.pi = self.npi / seq_num
             
-            if all(np.abs(p_loglik - loglik) < np.array([delta]*seq_num)):
+            # convergence check
+            diff = np.abs(p_loglik - loglik)
+            if all(diff < np.array([delta]*seq_num)):
                 break
 
-            print("iter: [", count, "] , log-likelihood(min): [", np.min(loglik), "]")
+            print("iter: [", count, "] , diff: [", np.max(diff), "]")
 
             p_loglik = loglik.copy()
-
-# create sample
-def simulate(nSteps):
-
-    def drawFrom(probs):
-        return np.where(np.random.multinomial(1,probs) == 1)[0][0]
-
-    observations = np.zeros(nSteps)
-    states = np.zeros(nSteps)
-    states[0] = drawFrom(pi)
-    observations[0] = drawFrom(B[states[0],:])
-    for t in range(1,nSteps):
-        states[t] = drawFrom(A[states[t-1],:])
-        observations[t] = drawFrom(B[states[t],:])
-    return observations,states
-
-o1, s = simulate(300)
-o2, s = simulate(50)
-o3, s = simulate(100)
-
-hmm = BaumWelch(eA, eB, epi)
-obs = np.array([o1, o2, o3])
-print(obs)
-hmm.baum_welch_m(obs, 1e-9, 10000)
-
-print("Actual parameters")
-print(A)
-print(B)
-print(pi)
-
-print("Estimated parameters")
-print(hmm.A)
-print(hmm.B)
-print(hmm.pi)
