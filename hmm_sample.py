@@ -41,7 +41,7 @@ o3, s = simulate(200)
 obs = np.array([o1, o2, o3])
 
 hmm = bw.BaumWelch(eA, eB, epi)
-hmm.baum_welch_m(obs, 1e-3, 400)
+hmm.train(obs, 1e-3, 400)
 
 print("Actual parameters")
 print(A)

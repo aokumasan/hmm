@@ -85,7 +85,7 @@ class BaumWelch:
 
 
     # Baum Welch algorithm with Multiple Sequences of observation symbols
-    def baum_welch_m(self, obs, delta = 1e-9, max_iter = 400):
+    def train(self, obs, delta = 1e-9, max_iter = 400):
 
         # init
         seq_num = obs.shape[0]
