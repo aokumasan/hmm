@@ -17,7 +17,7 @@ eB = np.array([[0.8, 0.2], [0.4, 0.6]])
 # 初期確率
 epi = np.array([1/2, 1/2])
 
-np.random.seed(1234)
+#np.random.seed(1234)
 
 # create sample
 def simulate(nSteps):
@@ -41,7 +41,7 @@ o3, s = simulate(200)
 obs = np.array([o1, o2, o3])
 
 hmm = bw.BaumWelch(eA, eB, epi)
-hmm.train(obs, 1e-3, 400)
+hmm.train(obs, 1e-6, 400)
 
 print("Actual parameters")
 print(A)

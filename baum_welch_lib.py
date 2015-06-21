@@ -86,10 +86,6 @@ class BaumWelch:
         self.npi += self.alpha[0, :] * self.beta[0, :] / self.c[0]
 
 
-    def check_convergence(self, delta):
-        
-        
-
     # Baum Welch algorithm with Multiple Sequences of observation symbols
     def train(self, obs, delta = 1e-9, max_iter = 400):
 
@@ -99,6 +95,9 @@ class BaumWelch:
         p_loglik = np.zeros(seq_num)
 
         for count in range(0, max_iter):
+            if count % 10 == 0:
+                print("iter: [", count, "]")
+                
             self.init_variables()
 
             # calc alpha, beta, c each sequences
@@ -118,11 +117,13 @@ class BaumWelch:
             self.pi = self.npi / seq_num
             
             # convergence check
-            diff = np.power(self.A - self.pA, 2) + np.power(self.B - self.pB, 2) + np.power(self.pi - self.pPi, 2)
-            if all(diff < delta):
+            diffA = np.power(self.A - self.pA, 2)
+            diffB = np.power(self.B - self.pB, 2)
+            diffPi = np.power(self.pi - self.pPi, 2)
+            if (diffA < delta).all() and (diffB < delta).all() and (diffPi < delta).all():
+                print("convergence !! iter = ", count)
                 break
 
-            print("iter: [", count, "] , diff: [", diff, "]")
 
             self.pA = self.A
             self.pB = self.B
