@@ -9,7 +9,10 @@ class BaumWelch:
         self.state_num = A.shape[0]
         self.symbol_num = B.shape[1]
         self.symbol = np.arange(self.symbol_num)
-
+        self.pA = A
+        self.pB = B
+        self.pPi = pi
+        
         
     # initialize variables (used in M-Step)
     def init_variables(self):
@@ -83,6 +86,9 @@ class BaumWelch:
         self.npi += self.alpha[0, :] * self.beta[0, :] / self.c[0]
 
 
+    def check_convergence(self, delta):
+        
+        
 
     # Baum Welch algorithm with Multiple Sequences of observation symbols
     def train(self, obs, delta = 1e-9, max_iter = 400):
@@ -112,10 +118,13 @@ class BaumWelch:
             self.pi = self.npi / seq_num
             
             # convergence check
-            diff = np.abs(p_loglik - loglik)
-            if all(diff < np.array([delta]*seq_num)):
+            diff = np.power(self.A - self.pA, 2) + np.power(self.B - self.pB, 2) + np.power(self.pi - self.pPi, 2)
+            if all(diff < delta):
                 break
 
-            print("iter: [", count, "] , diff: [", np.max(diff), "]")
+            print("iter: [", count, "] , diff: [", diff, "]")
 
-            p_loglik = loglik.copy()
+            self.pA = self.A
+            self.pB = self.B
+            self.pPi = self.pi
+
