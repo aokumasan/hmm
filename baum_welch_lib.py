@@ -12,8 +12,8 @@ class BaumWelch:
         self.pA = A
         self.pB = B
         self.pPi = pi
-        
-        
+
+
     # initialize variables (used in M-Step)
     def init_variables(self):
         self.A_num = np.zeros((self.state_num, self.state_num))
@@ -86,18 +86,27 @@ class BaumWelch:
         self.npi += self.alpha[0, :] * self.beta[0, :] / self.c[0]
 
 
+    # check convergence
+    def check_convergence(self, delta):
+        diff = 0
+        diff += np.sum(np.power(self.A - self.pA, 2))
+        diff += np.sum(np.power(self.B - self.pB, 2))
+        diff += np.sum(np.power(self.pi - self.pPi, 2))
+
+        return np.sqrt(diff) < delta
+
+
     # Baum Welch algorithm with Multiple Sequences of observation symbols
     def train(self, obs, delta = 1e-9, max_iter = 400):
 
         # init
         seq_num = obs.shape[0]
         loglik = np.zeros(seq_num)
-        p_loglik = np.zeros(seq_num)
 
         for count in range(0, max_iter):
             if count % 10 == 0:
                 print("iter: [", count, "]")
-                
+
             self.init_variables()
 
             # calc alpha, beta, c each sequences
@@ -115,16 +124,13 @@ class BaumWelch:
             self.A = self.A_num / self.A_den.T
             self.B = self.B_num / self.B_den
             self.pi = self.npi / seq_num
-            
+
             # convergence check
-            diffA = np.power(self.A - self.pA, 2)
-            diffB = np.power(self.B - self.pB, 2)
-            diffPi = np.power(self.pi - self.pPi, 2)
-            if (diffA < delta).all() and (diffB < delta).all() and (diffPi < delta).all():
-                print("convergence !! iter = ", count)
+            if self.check_convergence(delta):
+                print("convergence !! iteration = ", count, "log-likelihood: ", np.average(loglik))
                 break
 
-
+            # save previous parameter
             self.pA = self.A
             self.pB = self.B
             self.pPi = self.pi
