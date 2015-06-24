@@ -1,5 +1,5 @@
 import numpy as np
-import baum_welch_lib as bw
+from baum_welch_lib import BaumWelch
 
 # これが本当の値
 # 遷移確率行列
@@ -11,9 +11,9 @@ pi = np.array([1/2, 1/2])
 
 # これはパラメータ学習の初期値
 # 遷移確率行列
-eA = np.array([[0.8, 0.2], [0.1, 0.9]])
+eA = np.array([[0.4, 0.6], [0.3, 0.7]])
 # 出力確率行列
-eB = np.array([[0.8, 0.2], [0.4, 0.6]])
+eB = np.array([[0.8, 0.2], [0.2, 0.8]])
 # 初期確率
 epi = np.array([1/2, 1/2])
 
@@ -35,20 +35,27 @@ def simulate(nSteps):
     return observations,states
 
 # make multiple sequences of observations
-o1, s = simulate(1000)
+o1, s = simulate(50)
 o2, s = simulate(20)
-o3, s = simulate(200)
-obs = np.array([o1, o2, o3])
+o3, s = simulate(9)
+o4, s = simulate(3)
+obs = np.array([o1, o2, o3, o4])
 
-hmm = bw.BaumWelch(eA, eB, epi)
-hmm.train(obs, 1e-6, 400)
+hmm = BaumWelch(eA, eB, epi)
+hmm.train(obs, 1e-4, 400)
 
-print("Actual parameters")
-print(A)
-print(B)
+print("Actual parameter [pi]")
 print(pi)
-
-print("Estimated parameters")
-print(hmm.A)
-print(hmm.B)
+print("Estimated parameter [pi]")
 print(hmm.pi)
+print("")
+print("Actual parameter [A]")
+print(A)
+print("Estimated parameter [A]")
+print(hmm.A)
+print("")
+print("Actual parameter [B]")
+print(B)
+print("Estimated parameter [B]")
+print(hmm.B)
+
